@@ -34,10 +34,10 @@
 # must read from top (largest letters) to bottom (smallest letters). 
 # We will focus on the visual acuity defined as the total number of letters correctly read.
 
-rm(list=ls())
-library(settings)
-reset(options)
-graphics.off()
+rm(list=ls())         # Clear all objects from the workspace
+library(settings)     # Load the 'settings' package
+reset(options)        # Reset all global options to their default values
+graphics.off()        # Close all open graphics devices
 
 library(nlmeU)  # --> for the dataset
 library(nlme)   # --> for models implementation
@@ -45,13 +45,13 @@ library(lattice)
 library(corrplot)
 library(plot.matrix)
 
-data(armd.wide) # --> wide format
-head(armd.wide) # lesion and line0 contain additional information, which we won't use
-help(armd.wide)
-dim(armd.wide)
-str(armd.wide)
+data(armd.wide)        # Load the built-in dataset 'armd.wide' in wide format
+head(armd.wide)        # Display the first few rows of 'armd.wide' to get a quick look at the data
+help(armd.wide)        # Open documentation for 'armd.wide' for more details on the dataset
+dim(armd.wide)         # Get the dimensions of 'armd.wide' (number of rows and columns)
+str(armd.wide)         # Display the structure of 'armd.wide', showing data types of each column
 
-data(armd0)     # --> long (or longitudinal) format
+data(armd0)    #transfromed!!!  # --> long (or longitudinal) format
 head(armd0)     # new features: time.f, time, tp, and visual
 help(armd0)
 dim(armd0)
@@ -73,6 +73,20 @@ armd <- within(armd, {                    # Contrasts assigned for dealing with 
   contrasts(time.f) <- contr.poly(4, scores = c(4, 12, 24, 52)) # we are changing scores
   # If you are interested in further details, see 1.5.1 in 1_5_Supplementary.R
 })
+
+auxDt <- subset(armd0, time > 0)        # Create a new dataset 'auxDt' by selecting rows where 'time' is greater than 0 (post-baseline data)
+dim(auxDt)                             # Get the dimensions (number of rows and columns) of 'auxDt'
+levels(auxDt$time.f)                   # Show the levels of the factor variable 'time.f' in the dataset 'auxDt'
+armd <- droplevels(auxDt)               # Drop unused levels of the factor variables in 'auxDt' (cleanup to reduce unnecessary categories)
+levels(armd$time.f)                    # Show the levels of the 'time.f' factor after unused levels were dropped
+armd <- within(armd, {                  # Modify the 'armd' dataset by applying transformations to it
+  contrasts(time.f) <- contr.poly(4, scores = c(4, 12, 24, 52))  # Assign polynomial contrasts to the factor 'time.f' with specific scores at 4, 12, 24, and 52
+  # Additional explanation can be found in '1.5.1 in 1_5_Supplementary.R'
+})
+
+
+
+
 
 
 #____________________________________________________________#
