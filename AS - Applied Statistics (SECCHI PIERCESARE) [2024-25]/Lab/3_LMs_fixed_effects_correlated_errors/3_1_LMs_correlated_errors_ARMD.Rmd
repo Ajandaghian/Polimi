@@ -1,0 +1,526 @@
+
+#_____________ Applied Statistics 2024/2025 _________________________________
+
+‍‍‍‍‍‍‍‍‍
+#### 3.1.LMs with correlated errors: ARMD Trial application (Chapter 12) ####
+#___________________________________________________________________________#
+
+# LMs with fixed effects and correlated residual errors
+# the assumption of independence typically does not hold in a 
+# longitudinal study design, in which sampling units (subjects), are different
+# from the units of analysis (visual acuity measurements).
+
+library(nlmeU)  # --> for the dataset
+library(nlme)   # --> for models implementation
+library(lattice)
+library(corrplot)
+library(plot.matrix)
+
+# our model formulation (from previous labs)
+lm1.form <- formula(visual ~ -1 + visual0 + time.f + treat.f:time.f ) 
+
+## We go back to the model fm9.2, where:
+# varStruct <delta>-group i.e. lambda(delta,v)
+# delta scalar, no strata 
+# sigma_it = sigma * lambda_it 
+#          = sigma * lambda(delta, TIME_it) 
+#          = sigma * (TIME_it)^delta    
+fm9.2 <- gls(lm1.form, weights = varPower(form = ~time), data = armd) 
+
+# from the theory (Chapter 10)
+# eps_i ~ N(0, sigma^2 R_i)
+# where R_i = Lambda_i C_i Lambda_i 
+# with Lambda_i is diagonal matrix with |TIME_it|^delta on diagonal, for t=1,2,3,4
+# and C_i is correlation matrix (here, it's a 4x4 identity matrix)
+
+# We now modify the model, so that the visual acuity measurements within individuals, 
+# are allowed to be correlated.
+
+# For choosing appropriate correlation structure, the empirical semivariogram can be useful.
+?Variogram.gls
+# We remind that Semivariogram is 1-h(d(t_ij, t_ij'),rho) and 
+# h(d(t_ij, t_ij'),rho) is the correlation between two observations of the same group.
+
+# NB. time differences for all possible six pairs of timepoints are different. 
+# --> we can estimate the semivariogram to calculate correlation coefficients 
+# between Pearson residuals for every pair of timepoints, separately.
+
+# we start using time (time = 4,12,24,52)
+(Vg1 <- Variogram(fm9.2, form = ~ time | subject))
+# correlation between the residuals at 4 and 12 weeks is equal to 0.589 = 1−0.411
+# correlation between the residuals at 12 and 24 weeks is equal to 0.643 = 1−0.357
+# correlation between the residuals at 4 and 24 weeks is equal to 0.458 = 1−0.542
+# correlation between the residuals at 24 and 52 weeks is equal to 0.762 = 1−0.238
+# correlation between the residuals at 12 and 52 weeks is equal to 0.538 = 1−0.462
+# correlation between the residuals at 4 and 52 weeks is equal to 0.386 = 1−0.614
+
+xlims <- c("4", "12","24","52wks")
+ylims <- c(-4.9, 4.9)
+plot(Vg1, smooth = FALSE, xlab = "Time difference", ylab = 'Semivariogram: 1-h(Time difference,rho)', ylim = c(0,0.7)) 
+
+# now using time lag (tp = 1,2,3,4), i.e., the absolute difference between two position indexes
+(Vg2 <- Variogram(fm9.2, form = ~ tp | subject))  # there are only 3 possible time lags
+plot(Vg2, smooth = FALSE, xlab = "Time Lag", ylab = 'Semivariogram: 1-h(Time Lag,rho)', ylim = c(0,0.7))     
+# we are using smooth=FALSE because there are few values       
+
+# We notice that correlation decreases with the time difference/lag (because Semivariogram increases);
+# --> a correlation structure like, e.g., a compound symmetry, will likely not fit the data well. 
+# A more appropriate structure might be, e.g., an autoregressive process of order 1.
+
+# For illustrative purposes, we consider a model with a compound symmetry correlation structure.
+
+# NB. in the Variogram() function, we could also add robust=TRUE, which is an estimator
+#     more robust in presence of outliers (see formula 10.39 and 10.40 book page 191)
+#     by default, robust=FALSE
+
+
+
+
+#### 1) Compound-Symmetry Correlation Structure - corCompSymm (Chapter 12.3) ####
+
+# We assume:
+# - Lambda_i is diagonal matrix with (TIME_it)^delta on diagonal, for t=1,2,3,4 (as before)
+# - C_i (correlation matrix) has ones for diagonal terms (as before) and rho for extra-diagonal terms
+
+fm12.1 <- gls(lm1.form, weights = varPower(form = ~time), 
+              correlation = corCompSymm(form = ~1|subject),
+              data = armd)
+
+# we allow for a constant correlation of visual acuity measurements made at different
+# timepoints for the same patient
+summary(fm12.1)
+
+intervals(fm12.1, which = "var-cov")   # CIs for rho, delta, sigma 
+# Comments:
+
+# rho 
+# the correlation coefficient rho (of any two visual acuity measurements
+# obtained for the same patient) is equal to 0.573. 
+# --> The 95% CI confirms the presence of a a non-negligible correlation 
+#     between the visual acuity measurements. 
+
+# sigma
+# The scale parameter sigma is estimated to be equal to 5.98. 
+
+# delta (called power in R)
+# The estimated power coefficient of the variance function, 0.260, is
+# very close to the value of 0.252 obtained for model fm9.3 (varPower(form = ~time|treat.f) see lab2). 
+# --> It indicates an increasing variability of the measurements over time.
+
+# With the estimates of rho, sigma and delta we can estimate the var-cov matrix (command: getVarCov)
+
+# R_i computation (R_i is the marginal variance-covariance matrix of Y))
+fm12.1vcov <- getVarCov(fm12.1, individual = "2")   # R_i, e.g. i=2
+# individual="2" indicates that we request the matrix for subject "2", 
+# for whom all four post-randomization measurements are available.
+fm12.1vcov
+# we add names
+nms <- c("4wks", "12wks", "24wks", "52wks")
+dnms <- list(nms, nms)                              # Dimnames created
+dimnames(fm12.1vcov) <- dnms                        # Dimnames assigned
+print(fm12.1vcov)
+
+fm12.1vcov
+
+# Visualization of R_i
+R_i = fm12.1vcov
+R = matrix(0, nrow=28, ncol=28) # example for 7 subjects with all the observations
+for(i in 0:6){
+  R[(i*4+1):(i*4+4),(i*4+1):(i*4+4)] = R_i
+}
+plot(R, col=colorRampPalette(c("blue", "white", "red")))
+
+
+# C_i computation
+# we get correlation structure through cov2cor --> it is actually following corCompSymm structure
+print(cov2cor(fm12.1vcov),           # C_i
+      corr = TRUE, stdevs = FALSE) 
+# corr = TRUE chooses the form of the printout, suitable for correlation matrix;
+# stdevs = FALSE because standard deviations are irrelevant for a correlation matrix (and so we don't display them).
+
+# Visualization of C_i
+C = matrix(0, nrow=28, ncol=28) # example for 7 subjects with all the observations
+for(i in 0:6){
+  C[(i*4+1):(i*4+4),(i*4+1):(i*4+4)] = cov2cor(fm12.1vcov)
+}
+plot(C, col=colorRampPalette(c("blue", "white", "red")))
+
+
+# test based on the restricted likelihoods, 
+# because we use it for a comparison of models with the same mean structures
+anova(fm9.2, fm12.1) 
+# pval < 0.0001 --> there is enough proof against the assumption H0 
+# --> data provide evidence for assuming a constant correlation of visual acuity measurements 
+#     made at different timepoints for the same patient
+
+
+
+#### 2) Heteroscedastic Autoregressive Residual Errors - corAR1 (Chapter 12.4) ####
+
+# We assume:
+# - Lambda_i is diagonal matrix with (TIME_it)^delta on diagonal, for t=1,2,3,4 (as before)
+# - C_i (correlation matrix) has ones for diagonal terms (as before) and rho^k for extra-diagonal terms
+#   where k is the time unit between two different measurements (armd$tp)
+#   and rho is the correlation between two adjacent measurements
+# NB. it means that correlation decreases for measurements obtained at more distant timepoints
+
+fm12.2 <- update(fm9.2,                                     # fm12.2 nested in fm9.2
+                 correlation = corAR1(form = ~tp|subject),  # NB: remember that form = ~1 | subject) would lead to a mistake
+                 data = armd)
+summary(fm12.2)
+
+intervals(fm12.2, which = "var-cov") # CIs for rho, delta, sigma
+
+# R_i computation
+fm12.2vcov <- getVarCov(fm12.2, individual = "2")
+dimnames(fm12.2vcov) <- dnms
+R_i = fm12.2vcov                    # R_i matrix 
+
+# Visualization of R_i
+R = matrix(0, nrow=28, ncol=28) # example for 7 subjects with all the observations
+for(i in 0:6){
+  R[(i*4+1):(i*4+4),(i*4+1):(i*4+4)] = R_i
+}
+plot(R, col=colorRampPalette(c("blue", "white", "red")))
+
+# C_i computation
+# we get correlation structure through cov2cor
+fm12.2cor <- cov2cor(fm12.2vcov)
+print(fm12.2cor, digits = 2,         # C_i
+      corr = TRUE, stdevs = FALSE) 
+
+# Visualization of C_i
+C = matrix(0, nrow=28, ncol=28) # example for 7 subjects with all the observations
+for(i in 0:6){
+  C[(i*4+1):(i*4+4),(i*4+1):(i*4+4)] = fm12.2cor
+}
+plot(C, col=colorRampPalette(c("blue", "white", "red")))
+
+
+# correlation coefficient for the visual acuity measurements adjacent in time 
+# (e.g., those at weeks 4 and 12, or at weeks 12 and 24, etc.) is equal to rho = 0.66
+# --> it's higher than 0.57 obtained for the compound-symmetry structure.
+
+# On the other hand, the measurements separated by one intermittent observation
+# (e.g., those at weeks 4 and 24), are correlated with the correlation coefficient equal
+# to rho^2 = 0.43, which is lower than 0.57.
+
+# Compound-symmetry vs. autoregressive correlation (non-nested models)
+anova(fm12.1, fm12.2) # We look at the AIC because the models are non-nested and LR test cannot be performed
+
+# we prefer AR(1):
+# the model with the autoregressive correlation structure provides a better description 
+# of the data, in line with the results of the exploratory analysis and 
+# of the considerations based on the empirical semivariogram
+
+
+# Although the autoregressive correlation structure allows for differences in the
+# values of correlation coefficients, it assumes a particular form of these differences (see C_i). 
+# This assumption could be incorrect --> we consider a fully general correlation structure, 
+# which does not impose any constraints on the possible differences.
+
+
+
+
+#### 3) General correlation matrix for Residual Errors - corSymm (Chapter 12.5) ####
+
+# We assume:
+# - Lambda_i is diagonal matrix with (TIME_it)^delta on diagonal, for t=1,2,3,4 (as before)
+# - C_i (correlation matrix) has ones for diagonal terms (as before) and rho_j,j' for extra-diagonal terms
+#   where j,j' are two different time units (armd$tp)
+#   and rho is the correlation between two adjacent measurements
+
+fm12.3 <- update(fm12.2, correlation = corSymm(form = ~tp|subject), data = armd)
+summary(fm12.3)
+intervals(fm12.3, which = "var-cov")              # 95% CIs for rho, delta, sigma
+          
+# R_i computation
+fm12.3vcov <- getVarCov(fm12.3, individual = "2") # R_i  
+dimnames(fm12.3vcov) <- dnms
+print(fm12.3vcov)
+R_i = fm12.3vcov                                  # R_i matrix 
+
+# Visualization of R_i
+R = matrix(0, nrow=28, ncol=28) # example for 7 subjects with all the observations
+for(i in 0:6){
+  R[(i*4+1):(i*4+4),(i*4+1):(i*4+4)] = R_i
+}
+plot(R, col=colorRampPalette(c("blue", "white", "red")))
+
+
+# C_i computation
+# we get correlation structure through cov2cor
+fm12.3cor <- cov2cor(fm12.3vcov)                  # C_i
+print(fm12.3cor, corr = TRUE, stdevs = FALSE)
+# the correlation decreases for visual acuity measurements more distant in time
+
+# Visualization of C_i
+C = matrix(0, nrow=28, ncol=28) # example for 7 subjects with all the observations
+for(i in 0:6){
+  C[(i*4+1):(i*4+4),(i*4+1):(i*4+4)] = fm12.3cor
+}
+plot(C, col=colorRampPalette(c("blue", "white", "red")))
+
+
+
+anova(fm12.2, fm12.3)              # M12.2 nested in M12.3
+# --> we can conclude at 5% that model fm12.3 provides a better fit than model fm12.2
+
+
+###
+# We now check whether a model 
+# --> with the general correlation structure (corSymm), 
+# --> and the most general variance function (varIdent), which
+# allows arbitrary (positive) variances of the visual acuity measurements made at
+# different timepoints, 
+# could offer a better fit than model fm12.3
+
+fm12.3.b <- update(fm12.3, weights = varIdent(form = ~1|time.f))      # Alternative model
+anova(fm12.3, fm12.3.b)              # M12.3 nested in fm12.3.b model
+# from p-value + AIC, we deduce that
+# --> the simpler model fm12.3 provides an adequate summary of the data.
+
+
+
+#### Model-Fit Diagnostics ####
+# we analyze model fm12.3
+
+##### (a) Plots (and boxplots) of raw residuals ##### 
+# we combine one-dimensional scatterplot (stripplot) with a box-and-whiskers plot
+# and we add a grid of horizontal lines aligned with the axis labels
+panel.bwxplot0 <- function(x,y, subscripts, ...){
+  panel.grid(h = -1)
+  panel.stripplot(x, y, col = "grey", ...)
+  panel.bwplot(x, y, pch = "|", ...)
+}
+bwplot(resid(fm12.3) ~ time.f | treat.f, 
+       panel = panel.bwxplot0,
+       ylab = "Residuals", data = armd)
+# --> increasing variance of the residuals with timepoint. 
+# This reflects the heteroscedasticity.
+
+
+##### (b) Plots of Pearson residuals vs. fitted values ##### 
+
+plot(fm12.3) # default scatterplot of Pearson residuals versus the fitted values
+
+# here the residuals for different timepoints are plotted together
+# --> due to the correlation of the residuals corresponding to the measurements 
+#     for the same patient at different timepoints, the plot reveals a pattern, with a few
+#     large, positive residuals in the upper-left part and a few negative ones in the lower-right part.
+
+# --> we decide to visualize the residuals for each time instants
+plot(fm12.3, resid(., type = "p") ~ fitted(.) | time.f, ylab = 'Pearson residuals') # type='p' stands for Pearson residuals
+# more balanced pattern
+
+
+# the main issue in the interpretation
+# of Pearson residuals is the fact that they are Correlated: look at this plot
+
+#___ plot starts
+# connecting lines for outlying subjects at time = 4
+idq <- 0.02               
+id <- armd$subject
+residP <- resid(fm12.3, type = "pearson")  # Pearson residuals
+attach(armd)
+idx1 <- tp == 1                                    # time = 4 wks 
+idx <- (abs(residP) > -qnorm(idq/2)) & idx1        # Logical vector
+outliers.idx <- data.frame(subject, time, treat.f, visual, residP, idx)
+outliers <- subset(outliers.idx, idx, select = -idx)
+nrow(outliers)                                     # Number of outliers
+uid <- unique(outliers$subject)
+length(uid)                                        # Number of selected subjects
+uid
+detach(armd)
+
+gin <-  rep(FALSE, length(armd$subject))
+gin[id %in% uid] <- TRUE
+
+dt <- data.frame(armd, gin=gin, resid.p = residP)
+dtGin <- dt[gin, ]
+
+myPanel <- function(x, y, subscripts, groups, ...) {
+  panel.grid(h = -1, v = 0) 
+  gin <- dt$gin
+  gins <- gin[subscripts]
+  panel.xyplot(x, y)   # All points
+  x1 <- x[gins]
+  y1 <- y[gins]
+  subs1 <- subscripts[gins]
+  panel.superpose(x1, y1, subs1, groups, type = "l", lty = "13")
+}
+
+xyplot(resid.p ~ time.f | treat.f, data = dt,
+       panel = myPanel,
+       subscripts = TRUE,
+       groups = subject,
+       scales = list(abbreviate = TRUE),
+       aspect = 1,
+       xlab = "Standardized residuals",
+       ylim = ylims)
+#___ plot ends
+
+# The residuals obtained for most of the selected individuals 
+# tend to always have negative values
+# --> we move to normalized residuals
+
+##### (c) Plots of normalized residuals ##### 
+# To remove the correlation between Pearson residuals, we use the Normalized residuals:
+# we plot scatterplots of Pearson residuals (below the diagonal)
+# and the normalized residuals (above the diagonal) for all pairs of timepoints for fm12.3.
+
+#______ plot starts
+r1p <- resid(fm12.3, type = "pearson")
+r1n <- resid(fm12.3, type = "normalized")
+dtP <- data.frame(armd, r1p, r1n)
+library(reshape)
+dtPm <- melt(dtP,
+             measure.var = c("r1p","r1n"),
+             id.var = c("subject","time.f"))
+dtPc <- cast(dtPm, subject*variable ~ time.f) #
+dtPc <- data.frame(dtPc) 
+names(dtPc) <- c("subject","var","P4wks","P12wks","P24wks","P52wks")
+range(dtPc$P4wks, na.rm = TRUE)  
+
+myFunL <- function(corx) { 
+  ltext(-2.2, 3.2, substitute(paste(rho, corx), list(corx = corx)), cex = 1)
+}
+
+myFunU <- function(corx) { 
+  ltext(-2.2,-3.9, substitute(paste(rho,corx),list(corx = corx)), cex = 1)
+}
+
+my.upperPanel <-   ## pairwise.complete.obs 
+  function(x, y, subscripts, ...){
+    vr <- dtPc$var == "r1n" 
+    subs <- subscripts[vr]         
+    x1 <- x[subs]
+    y1 <- y[subs]
+    panel.abline(h = c(-4, -2, 0, 2, 4), col = "grey", ...)
+    panel.abline(v = c(-4, -2, 0, 2, 4), col = "grey", ...)
+    panel.xyplot(x1, y1, ...)
+    corx <- round(cor(x1, y1, use = "complete.obs"), 2)
+    abs.corx <- abs(corx)
+    corx <- paste("=", corx, sep = "")
+    myFunU(corx)
+  }
+
+my.lowerPanel <-    ## pairwise.complete.obs 
+  function(x, y, subscripts, ...){
+    vr <- dtPc$var == "r1p" 
+    subs <- subscripts[vr]         
+    x1 <- x[subs]
+    y1 <- y[subs]
+    panel.abline(h = c(-4, -2, 0, 2, 4), col = "grey", ...)
+    panel.abline(v = c(-4, -2, 0, 2, 4), col = "grey", ...)
+    panel.xyplot(x1, y1, ...)
+    corx <- round(cor(x1, y1, use = "complete.obs"), 2)
+    abs.corx <- abs(corx)
+    corx <- paste("=", corx, sep = "")
+    print(corx)
+    cex.value <- 2
+    myFunL(corx)
+  }
+
+mySuperPanel <- function(z, subscripts, panel.subscripts, ...){
+  panel.pairs(z, subscripts = subscripts,
+              panel.subscripts = panel.subscripts,
+              as.matrix = TRUE, 
+              upper.panel = "my.upperPanel",
+              lower.panel = "my.lowerPanel",
+              ## simpler syntax: prepanel.limits = function(z) return(c(-4.7,4.7))
+              pscales =list(
+                P4wks =list(limits=c(-4.7,4.7)),
+                P12wks=list(limits=c(-4.7,4.7)),
+                P24wks=list(limits=c(-4.7,4.7)),
+                P52wks=list(limits=c(-4.7,4.7))  ) )
+  print(names(z))
+}
+
+abbrev.names <- c("vis0", "vis4", "vis12", "vis24", "vis52")
+splom.form <- formula(~cbind(P4wks,P12wks,P24wks,P52wks))
+splom(splom.form,
+      data = dtPc,   #### subset(armd240,miss.pat =="----"),   
+      as.matrix = TRUE,  #### varnames = abbrev.names, 
+      xlab = "",
+      superpanel = mySuperPanel 
+)
+#______ plot ends
+
+# The scatterplots of Pearson residuals show a correlation between the
+# residuals corresponding to different timepoints. On the other hand, the plots for
+# the normalized residuals clearly illustrate that the residuals are (approximately)
+# uncorrelated.
+
+# same as before, but with normalized residuals
+bwplot(resid(fm12.3, type = 'n') ~ time.f | treat.f, 
+       panel = panel.bwxplot0,
+       ylab = "Residuals", data = armd)
+# a few more extreme residuals with negative values, smaller than −4. Nevertheless, the number of
+# residuals with an absolute value larger than, e.g., 2 is about the same.
+
+##### (d) normality assumption ##### 
+qqnorm(fm12.3, ~resid(., type= "n") | time.f) # we require the plot of normalized residuals
+# Although normalized residuals should be approximately uncorrelated, 
+# we graph separate Q-Q plots per timepoint to remove the influence of
+# any residual correlation.
+# The patterns appear to be reasonably close to straight lines. 
+# --> the normality assumption seems to be plausible for the ARMD data.
+
+
+#_______________________________________________________________________________
+#### Tests of hypotheses about the fixed effects ####
+
+# F-tests of the linear hypotheses for parameters b0t, b1, and b2t (SEQUENTIAL TESTS)
+anova(update(fm12.3, method = "ML")) # we refit the model through 'ML' estimation
+# e.g., the test for the time.f:treat.f interaction pertains to the null hypothesis
+# VISUAL_it = b_0t + b_1 * VISUAL0_i + b_2t * TREAT_i + eps_it
+# H0 : b21 = b22 = b23 = b24 = 0
+# --> at the 5% significance level, result of the test for the
+# time.f:treat.f interaction suggests that a simpler, constant treatment effect might be plausible
+# in other words, we do not have enough evidence to reject H0
+
+
+# We now start from the model fm12.3, keeping the same variance-covariance structure,
+# but we modify the mean structure
+# fm12.3 was
+# VISUAL_it = b_0t + b_1 * VISUAL0_i + b_2t * TREAT_i + eps_it
+# visual ~ -1 + visual0 + time.f + treat.f:time.f 
+
+##### model fm12.3a #####
+# (we add a general intercept; equivalent to 12.3 but refitted with 'ML') 
+# VISUAL_it = b_0 + b_0t + b_1*VISUAL0_i + b_2*TREAT_i + b_2t*TREAT_i + eps_it
+lm1a.form <- formula (visual ~ visual0 + time.f + treat.f + time.f:treat.f)   
+fm12.3a <- update(fm12.3, lm1a.form,          # fm12.3a <- fm12.3
+                  method = "ML", data = armd)
+summary(fm12.3a)
+
+##### model fm12.4 #####
+# (we remove time dependent intercept and we leave general intercept; 
+#  we change time from factor to continuous variable)
+# VISUAL_it = b_0 + b_1*VISUAL0_i + b_2*TIME_t + b_3*TREAT_i + b_4 * TIME_t * TREAT_i + eps_it
+lm2.form <- formula(visual ~ visual0 + time + treat.f + treat.f:time)
+fm12.4 <- update(fm12.3, lm2.form,            # fm12.4  <- fm12.3
+                 method = "ML", data = armd)
+summary(fm12.4)
+
+##### model fm12.5 #####
+# (we remove from fm12.4 the interaction between time and treatment)
+# VISUAL_it = b_0 + b_1 * VISUAL0_i + b_2 * TIME_t + b_3 * TREAT_i + eps_it
+lm3.form <-  update(lm2.form, . ~ . - treat.f:time)     
+fm12.5 <- update(fm12.3, lm3.form,            # fm12.5 <- 1fm2.3
+                 method = "ML", data = armd)
+
+
+# comparison
+anova(fm12.3a, fm12.4, fm12.5)
+# The results of both tests are statistically not significant at the 5% significance level. 
+# Thus, they indicate that model fm12.3a, which is equivalent to fm12.3, can
+# be simplified by assuming a mean linear trend of visual acuity measurements in
+# time and a constant treatment effect. --> model fm12.3 can be simplified to model fm12.5
+
+# fit of fm12.5 does not change much compared to fm12.3
+# scatterplot and qqplot are comparable to the ones for model fm12.3
+
+summary(fm12.5)
+
