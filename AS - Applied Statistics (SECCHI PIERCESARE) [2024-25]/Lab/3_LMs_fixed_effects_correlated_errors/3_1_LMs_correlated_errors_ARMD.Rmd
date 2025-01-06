@@ -74,8 +74,6 @@ plot(Vg2, smooth = FALSE, xlab = "Time Lag", ylab = 'Semivariogram: 1-h(Time Lag
 #     by default, robust=FALSE
 
 
-
-
 #### 1) Compound-Symmetry Correlation Structure - corCompSymm (Chapter 12.3) ####
 
 # We assume:

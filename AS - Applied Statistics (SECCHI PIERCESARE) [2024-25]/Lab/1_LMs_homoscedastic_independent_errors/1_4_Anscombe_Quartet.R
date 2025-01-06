@@ -17,7 +17,7 @@ attach(anscombe)
 lm1 <- lm(y1 ~ x1)
 summary(lm1)
 
-x11(width=14, height=7)
+#x11(width=14, height=7)
 par(mfcol=c(2,4))
 plot(x1,y1, main='Dataset 1')
 abline(lm1)
