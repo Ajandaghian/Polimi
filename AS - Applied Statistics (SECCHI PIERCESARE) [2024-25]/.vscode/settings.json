@@ -1,0 +1,7 @@
+{
+"r.linting": false,
+"r.lsp.diagnostics": false,
+"languageserver.formattingStyle": "none",
+"r.languageServer.use": false
+  }
+  
