@@ -3,7 +3,8 @@
 #### 8.1. Kalman filter  ####
 #___________________________#
 
-# install.packages("KFAS")
+install.packages("KFAS")
+
 library(KFAS)
 
 # Sources: 
@@ -165,5 +166,3 @@ fit_arima$optim.out$par
 ## \theta_1, \sigma
 c(fit_arima$model["R", 4],
   fit_arima$model["Q"])
-
-

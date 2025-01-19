@@ -3,6 +3,25 @@
 #### 1.2 Recap on Linear Models formulation (Chapter 5.2) ####
 #____________________________________________________________#
 
+######summary
+# + (Essential)                       Separates terms in the formula
+# : (Essential)                       Separates predictors in interaction terms
+
+## NB: to indicate that there is no intercept in the model, 
+## we can use 0 or -1 as a separate term
+# y ~ 0 + x1                   # No intercept using term 0
+# y ~ -1 + x1                  # No intercept using term -1
+
+# y ~ f1 + x1                  # ANCOVA with main effects only 
+# y ~ f1 + x1 + f1:x1          # Main effects and factor by numeric interaction   
+# y ~ f1 + f2 + f1:f2          # Main effects and f1 by f2 two way interaction 
+# y ~ f1 + f1:f3               # f3 nested within f1  
+# y ~ x1 + f1 + f2 +           # Main effects and ... 
+#   x1:f1+ x1:f2 + f1:f2       # ... two-way interactions 
+
+
+
+
 # We specify the Mean Structure using a Model Formula
 # y (dependent variable) ~ term1 + term2 +... (mean structure of the model)
 # (i.e. y = beta_0 + beta_1 * term1 + ... + eps )
@@ -55,4 +74,3 @@
 # form2 = y ~ I(x1 + x2/100)   # I() function for to explicitate the arithmetic (vs default) meaning 
 # update(form2, . ~ . + x3)    # x3 predictor added to form2
 # update(form2, . ~ . -1)      # Intercept omitted from form2
-

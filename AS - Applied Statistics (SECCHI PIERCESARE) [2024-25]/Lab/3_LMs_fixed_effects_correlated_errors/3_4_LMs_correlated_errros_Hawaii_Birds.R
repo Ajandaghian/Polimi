@@ -6,7 +6,7 @@
 # Source: Mixed Effects Models and Extensions in Ecology with R (2009) Zuur, Ieno, Walker, Saveliev and Smith. Springer
 
 # Annual abundances of three bird species measured at three islands in Hawaii from 1956 to 2003.
-
+setwd("/Users/amirh_jandaghian/Documents/Polimi/Y 02/Polimi - Git/AS - Applied Statistics (SECCHI PIERCESARE) [2024-25]/Lab/3_LMs_fixed_effects_correlated_errors")
 # We focus on Moorhen.Kauai:
 Hawaii = read.table('Hawaii.txt', header=T)
 Hawaii$Birds <- sqrt(Hawaii$Moorhen.Kauai)

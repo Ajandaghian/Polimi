@@ -115,6 +115,11 @@ linearHypothesis(fit,
                        c(0,0,1,0,0,0)),
                  c(0,0))
 
+#- Interaction terms with `Anno2` and `G` are statistically significant.
+#- The effect of `G` on the coefficient of `x²` is significant.
+#- `G` does not significantly affect the intercept.
+#- The hypothesis tests for `x²` and `G` interactions are strongly rejected.
+
 ### question (c)
 fit2 <- lm(Imm ~ Anno2 + Anno2:dFr + Anno2:dGer, data=dati)
 summary(fit2)

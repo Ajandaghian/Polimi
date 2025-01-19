@@ -53,7 +53,6 @@ guerry <- st_read(guerry_path)
 # queen_weights(sf_obj, order=1, include_lower_order = False, precision_threshold = 0)
 
 # For example, to create a Queen contiguity weights using the sf object guerry:
-  
 queen_w <- queen_weights(guerry)
 summary(queen_w)
 
@@ -86,7 +85,6 @@ head(lag)
 #rook_weights(sf_obj, order=1,include_lower_order=False, precision_threshold = 0)
 
 # For example, to create a Rook contiguity weights using the sf object guerry:
-  
 rook_w <- rook_weights(guerry)
 summary(rook_w)
 
@@ -117,7 +115,7 @@ save_weights(rook_w, guerry['CODE_DE'], out_path = '/Users/alessandragni/Downloa
 
 #To create a Distance based weights, one can call the function distance_weights:
 # Then, with this distance threshold, we can create a distance-band weights using the function:
-#distance_weights(geoda_obj, dist_thres, power=1.0,  is_inverse=False, is_arc=False, is_mile=True)
+#distance_weights(geoda_obj, dist_thres, power= 1.0,  is_inverse= False, is_arc= False, is_mile= True)
 
 # For example:   
 dist_thres <- min_distthreshold(guerry)
@@ -147,7 +145,7 @@ summary(knn6_w)
 #### 4 Local Indicators of Spatial Association–LISA ####
 
 # rgeoda provides following methods for local spatial autocorrelation statistics:
-  
+
 # - Local Moran: local_moran()
 # - Quantile LISA: local_quantilelisa()
 
@@ -158,14 +156,14 @@ summary(knn6_w)
 # The Local Moran statistic is a method to identify local clusters and local spatial outliers. 
 # For example, we can call  the function `local_moran()` with the created Queen weights 
 # and the data "crm_prp = guerry['Crm_prp']" as input parameters:
-  
+
 crm_prp = guerry["Crm_prp"]
 lisa <- local_moran(queen_w, crm_prp)
 
 
 # The `local_moran()` function will return a `lisa` object, and we can access its 
 # values/results of lisa computation using the following functions:
-  
+
 # - lisa_clusters(): Get the local cluster indicators returned from LISA computation.
 # - lisa_colors(): Get the cluster colors of LISA computation.
 # - lisa_labels(): Get the cluster labels of LISA computation.
@@ -203,10 +201,8 @@ cats
 # 6 Isolated
 
 # which can be accessed via the function lisa_labels():
-
 lbls <- lisa_labels(lisa)
 lbls
-
 
 # By default, the local_moran() function will run with some default parameters, e.g.:
 # significance_cutoff: 0.05
@@ -281,7 +277,6 @@ lisa <- local_moran(queen_w,  guerry['Crm_prs'])
 ##### 6.3 Create Local Moran Map #####
 
 # With the LISA results, we can make a local Moran cluster map:
-
 lisa_colors <- lisa_colors(lisa)
 lisa_labels <- lisa_labels(lisa)
 lisa_clusters <- lisa_clusters(lisa)
@@ -319,4 +314,5 @@ plot(st_geometry(guerry),
      border = "#333333", lwd=0.2)
 title(main = "Local Moran Map of Crm_prs")
 legend('bottomleft', legend = p_labels, fill = p_colors, border = "#eeeeee")
+
 

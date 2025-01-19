@@ -1,5 +1,4 @@
 #_____________ Applied Statistics 2024/2025 _______________________
-
 #### 3.3 Illustration of Correlation Structures (Chapter 11.4) ####
 #_________________________________________________________________#
 
@@ -114,7 +113,3 @@ ceEn <- corExp(c(1, 0.2), ~ loc1 + loc2 | subj, nugget = TRUE)  # nugget = 0.2 (
 # value = c(1, 0.2) (i.e., range=1, nugget=0.2)
 ceEn <- Initialize(ceEn, df)
 corMatrix(ceEn)[[1]]             # Corr matrix for the 1st subject
-
-
-
-
