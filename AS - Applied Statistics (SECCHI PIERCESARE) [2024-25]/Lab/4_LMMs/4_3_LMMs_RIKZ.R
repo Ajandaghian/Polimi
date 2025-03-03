@@ -11,9 +11,9 @@
 # Zuur et al. (2007) used species richness (the number of different species) 
 # and NAP (the height of a sampling station compared to mean tidal level)
 
-RIKZ <- read.table("RIKZ.txt", header=T)
+RIKZ <- read.table("/Users/amirh_jandaghian/Documents/Polimi/Y 02/Polimi - Git/AS - Applied Statistics (SECCHI PIERCESARE) [2024-25]/Lab/4_LMMs/RIKZ.txt", header=T)
 RIKZ$fBeach <- factor(RIKZ$Beach)
-
+RIKZ
 # - R_ij species richness at site j on beach i ;
 # - NAP_ij  the height of site j on beach i compared to mean beach level ;
 # - Exposure_i is the exposure on beach i 
@@ -106,5 +106,6 @@ for (i in 1:9){
 
 # The thick line is the fitted population curve, 
 # and the other lines the within-beach fitted curves.
+
 
 

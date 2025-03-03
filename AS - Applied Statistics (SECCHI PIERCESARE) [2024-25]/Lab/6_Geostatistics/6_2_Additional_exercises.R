@@ -43,7 +43,7 @@ library(sp)          ## Data management
 library(lattice)      ## Data management
 library(gstat)        ## Geostatistics (essential package)
 
-data=read.table('fluoruro.txt')
+data=read.table('/Users/amirh_jandaghian/Documents/Polimi/Y 02/Polimi - Git/AS - Applied Statistics (SECCHI PIERCESARE) [2024-25]/Lab/6_Geostatistics/fluoruro.txt')
 names(data)[3]='f'
 attach(data)
 coordinates(data)=c('X','Y')
