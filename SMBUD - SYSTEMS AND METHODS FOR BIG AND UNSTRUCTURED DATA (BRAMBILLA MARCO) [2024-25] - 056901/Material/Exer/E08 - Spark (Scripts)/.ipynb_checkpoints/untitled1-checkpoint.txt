@@ -1,0 +1,4 @@
+("Diavola", 5.95, ["Tomato Sauce", "Mozzarella Cheese", "Spicy Salame"]),
+("Prosciutto", 7.95, ["Tomato Sauce", "Mozzarella Cheese", "Prosciutto Cotto"]),
+("Speck & Brie", 7.95, ["Tomato Sauce", "Mozzarella Cheese", "Speck", "Brie"]),
+("Tonno & Cipolle", 7.95, ["Tomato Sauce", "Mozzarella Cheese", "Tuna", "Onions"])
