@@ -1,0 +1,12 @@
+  
+name: qda_base
+channels:
+  - defaults
+dependencies:
+  - anaconda
+  - numpy
+  - pandas
+  - matplotlib
+  - matplotlib-inline
+  - matplotlib-base
+  - scipy
